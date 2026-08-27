@@ -1,4 +1,4 @@
-Investment Intelligence Digest
+**Investment Intelligence Digest**
 
 An automated AI-powered investment news intelligence workflow built with
 n8n to monitor a personal stock portfolio, identify materially
@@ -367,67 +367,6 @@ Automatically trade
 Replace investor judgment
 
 The final decision remains with the investor.
-
-📁 Repository Structure
-
-investment-intelligence-digest/
-│
-├── README.md
-│
-├── assets/
-│   ├── workflow-overview.png
-│   └── email-digest.png
-│
-└── workflow/
-    └── Investment_Intelligence_Digest_GitHub.json
-
-⚙️ Setup
-
-1. Install n8n
-
-Run the workflow using a self-hosted or cloud n8n instance.
-
-2. Import the workflow
-
-Import:
-
-workflow/Investment_Intelligence_Digest_GitHub.json
-
-3. Configure Google Sheets
-
-Create a Google Sheet containing the portfolio and investment thesis
-fields described above.
-
-Replace:
-
-YOUR_GOOGLE_SHEET_ID
-
-with the appropriate Google Sheet ID.
-
-4. Configure OpenAI
-
-Connect an OpenAI credential in n8n.
-
-The workflow uses:
-
-GPT-5 nano
-
-GPT-5.4 mini
-
-5. Configure Gmail
-
-Connect a Gmail credential and replace:
-
-YOUR_EMAIL@example.com
-
-with the destination email address.
-
-6. Execute the workflow
-
-Run the workflow manually for testing.
-
-After validation, the workflow can be connected to a schedule trigger
-for daily delivery.
 
 🔐 Security & Privacy
 
