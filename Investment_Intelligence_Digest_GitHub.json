@@ -1,0 +1,674 @@
+{
+  "name": "Investment Intelligence Digest",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        0
+      ],
+      "id": "16324b83-d305-4d39-a9b9-25c6a0720a72",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=={{ $json.Ticker }}"
+            },
+            {
+              "name": "hl",
+              "value": "vi"
+            },
+            {
+              "name": "gl",
+              "value": "VN"
+            },
+            {
+              "name": "ceid",
+              "value": "VN:vi"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        304,
+        0
+      ],
+      "id": "41f4d752-6af4-48b9-91ba-07e408b7e252",
+      "name": "Get Google News"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        96,
+        0
+      ],
+      "id": "548f0e40-20b0-4833-aef3-2d5ab9eee5a0",
+      "name": "Investment Thesis"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        512,
+        0
+      ],
+      "id": "5965f11c-ecec-45b5-930d-bbaed95c39f8",
+      "name": "XML"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rss.channel.item",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        704,
+        0
+      ],
+      "id": "294d8e74-5e1b-43d5-9750-29c712ebaf58",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c48f8f84-4d2a-4194-9eff-b655e0a8b1c8",
+              "name": "publishedTimestamp",
+              "value": "={{ new Date($json['rss.channel.item'].pubDate).getTime() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "cf26d5bc-9bbf-4af9-894e-cf2ba34003f9",
+      "name": "Prepare News Date"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2da739c3-d16b-48aa-b796-9cdc3110d62c",
+              "leftValue": "={{ $json.publishedTimestamp }}",
+              "rightValue": "={{ Date.now() - 7 * 24 * 60 * 60 * 1000 }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "6665bc60-e2cb-4913-bca9-04edaff68bc1",
+      "name": "Filter Recent News"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "['rss.channel.item'].link",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "320dbdd7-55bf-434c-ab19-059edaf5f41c",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13b90353-6ccc-4dce-86ec-eb774ed66c7b",
+              "name": "Ticker",
+              "value": "={{ $json.rss.channel.title.split('\"')[1].replace('=', '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "a66cb994-dbb5-4a92-b979-b0a970b35c6a",
+      "name": "Identify Ticker"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        400
+      ],
+      "id": "a3140dd3-e068-405f-9636-015be99a6d3f",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8e4a88a9-470d-458b-9a9d-f11ce49dbd23",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "RELEVANT",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        208
+      ],
+      "id": "11b796a8-36c3-4cd9-a5a9-c06b9d9a8f79",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2f8289a0-52d0-4682-b8de-048cdc6d434c",
+              "name": "Ticker",
+              "value": "={{ $('Remove Duplicates').item.json.Ticker }}",
+              "type": "string"
+            },
+            {
+              "id": "6278e400-e312-4b94-b2be-c9524764f31d",
+              "name": "News_Title",
+              "value": "={{ $('Remove Duplicates').item.json['rss.channel.item'].title }}",
+              "type": "string"
+            },
+            {
+              "id": "90d4ba5e-ef0d-4a13-834a-ef09ecc4660d",
+              "name": "News_Description",
+              "value": "={{ $('Remove Duplicates').item.json['rss.channel.item'].description }}",
+              "type": "string"
+            },
+            {
+              "id": "7f228e4d-e2a6-425d-a287-ab510d90c61b",
+              "name": "News_Link",
+              "value": "={{ $('Remove Duplicates').item.json['rss.channel.item'].link }}",
+              "type": "string"
+            },
+            {
+              "id": "048c84ab-24c2-4ef1-8cfb-00add445b193",
+              "name": "Investment_Thesis",
+              "value": "={{ $('Investment Thesis').all().find(item => item.json.Ticker === $('Remove Duplicates').item.json.Ticker)?.json.Investment_Thesis }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        400,
+        192
+      ],
+      "id": "074f48c9-0ee3-429e-b93f-c672324833e4",
+      "name": "Prepare Relevant News"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=News title:\n{{ $json['rss.channel.item'].title }}\n\nNews description:\n{{ $json['rss.channel.item'].description }}\n\nTicker:\n{{ $json.Ticker }}\n\nYou are a financial news relevance classifier.\n\nDetermine whether this news is materially relevant to the company represented by the Ticker.\n\nReturn ONLY one of these two values:\nRELEVANT\nNOT_RELEVANT\n\nDo not consider a news item relevant merely because the company\nor ticker is mentioned in passing. It must have a meaningful\npotential impact on the company's business, earnings, financial\nposition, strategy, risks, or long-term investment thesis.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -96,
+        208
+      ],
+      "id": "02a17ff2-1128-446e-bbc2-50fd2b19e102",
+      "name": "AI Relevant Assessment"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        400
+      ],
+      "id": "a14e439b-64f7-4d24-8ff2-8e0b117a129f",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"summary\": \"Cổ phiếu MBB có triển vọng tăng trưởng dài hạn nhờ nền tảng khách hàng lớn, tăng trưởng tín dụng và hiệu quả hoạt động tốt.\",\n  \"impact\": \"Positive\",\n  \"investment_impact\": \"Tin tức hỗ trợ thesis đầu tư dài hạn của MBB, nhưng cần tiếp tục theo dõi chất lượng tài sản và chi phí tín dụng.\",\n  \"key_point\": \"Tăng trưởng tín dụng và kiểm soát NPL là yếu tố quan trọng đối với triển vọng dài hạn của MBB.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        400
+      ],
+      "id": "9c55bb41-8940-421b-975c-eacb12eec4c5",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a long-term investment news analyst.\n\nAnalyze the following news for the identified stock.\n\nTicker:\n{{ $json.Ticker }}\n\nNews title:\n{{ $json.News_Title }}\n\nNews description:\n{{ $json.News_Description }}\n\nInvestment thesis:\n{{ $json.Investment_Thesis }}\n\nYour task:\n\n1. Summarize the news in 1-2 concise sentences.\n2. Determine the investment impact:\n   - Positive\n   - Neutral\n   - Negative\n3. Explain briefly why this news matters or does not matter to the stock's long-term investment thesis.\n4. Give one key takeaway for a long-term investor.\n\nLanguage:\nReturn the entire answer in Vietnamese.\nKeep financial terms such as EPS, ROE, NIM, NPL in their original form when appropriate.\n\nReturn ONLY in this format:\n\nOUTPUT REQUIREMENTS:\n\nReturn ONLY a valid JSON object.\n\nDo not use Markdown.\nDo not use ```json.\nDo not add any text before or after the JSON.\nDo not use labels such as SUMMARY:, IMPACT:, INVESTMENT_IMPACT:, or KEY_POINT:.\n\nThe JSON must contain exactly these four fields:\n\n{\n  \"summary\": \"1-2 concise sentences summarizing the news.\",\n  \"impact\": \"Positive\",\n  \"investment_impact\": \"Explain how this news affects the long-term investment thesis of the identified stock.\",\n  \"key_point\": \"State the single most important takeaway for a long-term investor.\"\n}\n\nThe \"impact\" field must be exactly one of:\nPositive\nNeutral\nNegative\n\nBase the analysis only on the provided news and investment thesis.\nDo not make a buy or sell recommendation.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        576,
+        192
+      ],
+      "id": "eae7b233-a4ea-43d8-ad0d-3b6a54a46705",
+      "name": "AI Analysis"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1088,
+        384
+      ],
+      "id": "ac4dba14-f312-48a6-9133-20048e0e065b",
+      "name": "OpenAI Chat Model2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a long-term investment portfolio analyst.\n\nYour task is to create ONE concise daily investment digest\nfrom the analyzed news provided below.\n\nIMPORTANT:\n- Group related news about the same stock/company.\n- Do NOT summarize each news item separately.\n- Focus only on information that can affect the long-term investment thesis.\n- Remove duplicated or low-value information.\n- Prioritize material developments over commentary or speculation.\n- Do not make buy/sell recommendations.\n\nFor EACH stock that has meaningful news, provide:\n\n📌 [TICKER]\n\n🎯 Overview\n- Maximum 2 sentences.\n\n🟢 Positive\n- Maximum 2 bullets.\n- Each bullet: maximum 20 words.\n\n🔴 Risks\n- Maximum 2 bullets.\n- Each bullet: maximum 20 words.\n\n👀 Watch\n- Maximum 2 bullets.\n- Each bullet: maximum 20 words.\n\n📌 Investment Thesis\n- State whether the thesis is:\n  STRENGTHENED / UNCHANGED / WEAKENED\n- Maximum 2 sentences.\n- Explain only the most important reason.\n\n💡 Conclusion\n- Maximum 2 sentences.\n- Explain what matters most for a long-term investor.\n\nIMPORTANT OUTPUT RULES:\n- Output ONE combined digest, not one output per news item.\n- Group all news belonging to the same ticker.\n- Do not repeat the same information across sections.\n- If multiple articles discuss the same event, mention it only once.\n- If a stock has little meaningful information, omit it.\n- Keep the entire digest concise enough to fit into a daily email.\n- Write in Vietnamese.\n- Do not include news links.\n- Do not include article titles unless necessary to explain a material event.\n\nNews analyzed by AI:\n\n{{ JSON.stringify($json.news) }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1088,
+        192
+      ],
+      "id": "7fe878a0-2b4e-4d28-afb4-86188a6e4ef2",
+      "name": "AI Digest"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn [\n  {\n    json: {\n      news: items.map(item => item.json.output)\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        192
+      ],
+      "id": "e2d66c42-f781-4a2a-9d07-04521da60866",
+      "name": "Aggregate News"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "=📊 Investment Intelligence Digest – {{$now.toFormat('dd/MM/yyyy')}}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        192
+      ],
+      "id": "076502ed-cf0e-449c-84fc-3654e5f1bb2f",
+      "name": "Send a message"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\n\nconst lines = text\n  .replace(/\\\\n/g, '\\n')\n  .split('\\n')\n  .map(line => line.trim())\n  .filter(line => line !== '');\n\nlet html = `\n<div style=\"font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; color: #222; line-height: 1.5;\">\n  <h1 style=\"font-size: 24px; margin-bottom: 8px;\">\n    📊 Investment Intelligence Digest\n  </h1>\n  <div style=\"color:#666; margin-bottom:20px;\">\n    Daily portfolio intelligence\n  </div>\n`;\n\nlet inList = false;\n\nfor (const line of lines) {\n\n  // Stock heading: 📌 MBB\n  if (/^📌\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const ticker = line\n      .replace(/^📌\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <div style=\"margin-top:28px; padding-bottom:8px; border-bottom:2px solid #ddd;\">\n        <h2 style=\"font-size:20px; margin:0;\">\n          📌 ${ticker}\n        </h2>\n      </div>\n    `;\n\n  // Section headings\n  } else if (/^🎯\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const title = line\n      .replace(/^🎯\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        🎯 ${title}\n      </h3>\n    `;\n\n  } else if (/^🟢\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const title = line\n      .replace(/^🟢\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        🟢 ${title}\n      </h3>\n    `;\n\n  } else if (/^🔴\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const title = line\n      .replace(/^🔴\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        🔴 ${title}\n      </h3>\n    `;\n\n  } else if (/^👀\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const title = line\n      .replace(/^👀\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        👀 ${title}\n      </h3>\n    `;\n\n  } else if (/^📌\\s*\\*\\*Investment Thesis\\*\\*/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        📌 Investment Thesis\n      </h3>\n    `;\n\n  } else if (/^💡\\s*\\*\\*.*\\*\\*$/.test(line)) {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const title = line\n      .replace(/^💡\\s*/, '')\n      .replace(/\\*\\*/g, '');\n\n    html += `\n      <h3 style=\"margin:18px 0 6px; font-size:16px;\">\n        💡 ${title}\n      </h3>\n    `;\n\n  // Bullet\n  } else if (/^[-•]\\s*/.test(line)) {\n\n    if (!inList) {\n      html += `\n        <ul style=\"margin-top:4px; padding-left:22px;\">\n      `;\n      inList = true;\n    }\n\n    const content = line\n      .replace(/^[-•]\\s*/, '')\n      .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');\n\n    html += `<li style=\"margin-bottom:5px;\">${content}</li>`;\n\n  // Normal paragraph\n  } else {\n    if (inList) {\n      html += '</ul>';\n      inList = false;\n    }\n\n    const content = line\n      .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');\n\n    html += `\n      <p style=\"margin:6px 0 10px;\">\n        ${content}\n      </p>\n    `;\n  }\n}\n\nif (inList) {\n  html += '</ul>';\n}\n\nhtml += `\n  <div style=\"margin-top:30px; padding-top:12px; border-top:1px solid #ddd; color:#888; font-size:12px;\">\n    This email was generated automatically with n8n.\n  </div>\n</div>\n`;\n\nreturn [\n  {\n    json: {\n      html\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        192
+      ],
+      "id": "5b1e7ed8-58e1-4f00-828d-69ef8d83dcd7",
+      "name": "Format Email"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Investment Thesis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Investment Thesis": {
+      "main": [
+        [
+          {
+            "node": "Get Google News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Google News": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Identify Ticker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare News Date": {
+      "main": [
+        [
+          {
+            "node": "Filter Recent News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Recent News": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "AI Relevant Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify Ticker": {
+      "main": [
+        [
+          {
+            "node": "Prepare News Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Relevant Assessment",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Prepare Relevant News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Relevant Assessment": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Relevant News": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Aggregate News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Digest",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate News": {
+      "main": [
+        [
+          {
+            "node": "AI Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Digest": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
